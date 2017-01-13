@@ -1,0 +1,5 @@
+- Tidy up code into classes, etc.
+- Lane changing feasibility / decision logic
+- Auto splits/merges calibrate lengths
+
+- Intersections, etc.
