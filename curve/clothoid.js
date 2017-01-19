@@ -68,8 +68,8 @@ export default class Clothoid extends Curve {
         ];
         if (l != 0) {
             const a = this.baseAngle(s);
-            pos[0] += l * Math.sin(a);
-            pos[1] += l * -Math.cos(a);
+            pos[0] += l * -Math.sin(a);
+            pos[1] += l * Math.cos(a);
         }
         return pos;
     }

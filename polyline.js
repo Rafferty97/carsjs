@@ -75,7 +75,13 @@ export default class PolyLine {
         let lp = pos(t1), ls = 0, lt = t1, dt = d;
         while (lt < t2) {
             let ds = vecLen(vecDiff(lp, pos(lt + dt)));
+            let j = 0;
             while (Math.abs(ds - d) > maxErr) {
+                j++;
+                if (j > 100) {
+                    console.log(ds, d);
+                    break;
+                }
                 dt *= (d / ds);
                 ds = vecLen(vecDiff(lp, pos(lt + dt)));
             }

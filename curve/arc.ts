@@ -25,7 +25,7 @@ export default class Arc extends Curve
 
   XY(s: number, l: number = 0): [number, number]
   {
-    const r = this.radius + (this.direction * l);
+    const r = this.radius + (this.direction * -l);
     const a = this.ang + (this.direction * (s / this.radius));
     return [
       this.centre[0] + (r * Math.cos(a)),

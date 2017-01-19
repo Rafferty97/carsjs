@@ -13,7 +13,7 @@ export default class Curve {
         return 0;
     }
     angle(s, dlds = 0) {
-        return wrapAngle(this.baseAngle(s) - Math.atan(dlds));
+        return wrapAngle(this.baseAngle(s) + Math.atan(dlds));
     }
     getParallelDist(s, point) {
         const ang = this.baseAngle(s);
@@ -66,11 +66,11 @@ export default class Curve {
     reverse() {
         return new ReverseCurve(this);
     }
-    drawLine(s, ctx) {
+    drawLine(s, ctx, y1, y2) {
         ctx.beginPath();
-        let p = this.XY(s, -10);
+        let p = this.XY(s, y1);
         ctx.moveTo(p[0], p[1]);
-        p = this.XY(s, 10);
+        p = this.XY(s, y2);
         ctx.lineTo(p[0], p[1]);
         ctx.stroke();
         ctx.closePath();

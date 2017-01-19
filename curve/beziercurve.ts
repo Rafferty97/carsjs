@@ -21,7 +21,7 @@ export default class BezierCurve extends Curve
   TfromS: (s: number) => number;
   len: number;
 
-  constructor(points: [number, number][])
+  constructor(...points: [number, number][])
   {
     super();
     this.points = points;
@@ -54,8 +54,8 @@ export default class BezierCurve extends Curve
     let pos = this._XY(this.TfromS(s));
     if (l != 0) {
       const a = this.baseAngle(s);
-      pos[0] += l * Math.sin(a);
-      pos[1] += l * -Math.cos(a);
+      pos[0] += l * -Math.sin(a);
+      pos[1] += l * Math.cos(a);
     }
     return pos;
   }

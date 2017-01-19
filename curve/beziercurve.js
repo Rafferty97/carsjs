@@ -11,7 +11,7 @@ export function getPascalLine(n) {
     return line;
 }
 export default class BezierCurve extends Curve {
-    constructor(points) {
+    constructor(...points) {
         super();
         this.points = points;
         this.pascal = getPascalLine(this.points.length - 1);
@@ -37,8 +37,8 @@ export default class BezierCurve extends Curve {
         let pos = this._XY(this.TfromS(s));
         if (l != 0) {
             const a = this.baseAngle(s);
-            pos[0] += l * Math.sin(a);
-            pos[1] += l * -Math.cos(a);
+            pos[0] += l * -Math.sin(a);
+            pos[1] += l * Math.cos(a);
         }
         return pos;
     }

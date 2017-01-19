@@ -39,7 +39,7 @@ export default class PolyCurve extends Curve {
                         p.push(arr.slice(i, i + 2));
                         i += 2;
                     }
-                    c = new BezierCurve(orientPoints(p, x, y, a));
+                    c = new BezierCurve(...orientPoints(p, x, y, a));
                     break;
             }
             if (c == null)

@@ -4,132 +4,170 @@ import Clothoid from './curve/clothoid';
 import BezierCurve from './curve/beziercurve';
 import Spline from './spline';
 import Arc from './curve/arc';
-import Car from './car';
+import Car, { LCDirection } from './car';
 import Track from './track';
 import Lane from './lane';
 import MergeController from './controller/mergectrl';
 import DivergeController from './controller/divergectrl';
+import Road from './road';
+import drawRoad from './drawroad';
+import ConflictArea from './conflictarea';
 
 const delta = 0.05;// 0.025;
 
 let canv = <HTMLCanvasElement> document.getElementById("canvas");
 let ctx = canv.getContext("2d");
 
-ctx.transform(4, 0, 0, 4, 50, 100);
+ctx.transform(4, 0, 0, 4, 20, 20);
 
-const curve = PolyCurve.parseCurve([0, 0, 0, 'l', 100, 'c', 50, 0, 0.02, 'a', 100, 0.02, 'c', 50, 0.02, -0.05]);
-//const curve = PolyCurve.parseCurve([0, 0, 0, 'l', 50, 'b', 50, 0, 50, 50, 'l', 60]);
+//const curve = PolyCurve.parseCurve([0, 0, 0, 'l', 100, 'c', 50, 0, 0.02, 'a', 100, 0.02, 'c', 50, 0.02, -0.05]);
+//const curve = PolyCurve.parseCurve([0, 0, 0, 'l', 50, 'b', 50, 0, 50, 50, 'l', 80]);
 //const curve = new Line(0, 0, 300, 0);
 //const curve = new Arc(200, 50, 50, 0, 1, 50 * 2 * Math.PI);
 //const curve = new Line(300, 25, 0, 25);
 
-function drawLine(p: (n: number) => [number, number], s1: number, s2: number, ds: number)
-{
-  let pos = p(s1);
-  ctx.beginPath();
-  ctx.moveTo(pos[0], pos[1]);
-  for (let s = s1 + ds; s < s2; s += ds) {
-    pos = p(s);
-    ctx.lineTo(pos[0], pos[1]);
-  }
-  pos = p(s2);
-  ctx.lineTo(pos[0], pos[1]);
-  ctx.stroke();
-  ctx.closePath();
+// DO SHIT
+
+const curveWE = new Line(0, 75, 300, 75);
+const curveNS = new Line(150, 0, 150, 150);
+const curveNW = new BezierCurve([150, 60], [150, 75], [135, 75]);
+const curveNE = new BezierCurve([150, 60], [150, 75], [165, 75]);
+const curveSW = new BezierCurve([150, 90], [150, 75], [135, 75]);
+const curveSE = new BezierCurve([150, 90], [150, 75], [165, 75]);
+
+const roadE = new Road(curveWE, 165, 300, [-3, -7], [-3, -7]);
+const roadN = new Road(curveNS, 0, 60, [-3, -7], [-3, -7]);
+const roadW = new Road(curveWE, 0, 135, [-3, -7], [-3, -7]);
+const roadS = new Road(curveNS, 90, 150, [-3, -7], [-3, -7]);
+const roadNW = new Road(curveNW, 0, curveNW.length, [-3], [-7]);
+const roadNE = new Road(curveNE, 0, curveNE.length, [-7], [-3]);
+const roadSW = new Road(curveSW, 0, curveNW.length, [-7], [-3]);
+const roadSE = new Road(curveSE, 0, curveNE.length, [-3], [-7]);
+const roadWE = new Road(curveWE, 135, 165, [-3, -7], [-3, -7]);
+const roadNS = new Road(curveNS, 60, 90, [-3, -7], [-3, -7]);
+
+for (let j=0; j<4; j++) {
+  for (let i=0; i<4; i++) new Car(roadE.tracks[j % 2].lanes[j - (j % 2)], 10*i, 0);
+  for (let i=0; i<2; i++) new Car(roadN.tracks[j % 2].lanes[j - (j % 2)], 10*i, 0);
+  for (let i=0; i<4; i++) new Car(roadW.tracks[j % 2].lanes[j - (j % 2)], 10*i, 0);
+  for (let i=0; i<2; i++) new Car(roadS.tracks[j % 2].lanes[j - (j % 2)], 10*i, 0);
 }
 
-function drawCar(car: Car)
-{
-  const { p, a } = car.XYA();
-  ctx.save();
-  ctx.transform(Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), p[0], p[1]);
-  ctx.beginPath();
-  ctx.setLineDash([]);
-  const l = car.l / 2, w = car.w / 2;
-  ctx.moveTo(-l, -w);
-  ctx.lineTo( l, -w);
-  ctx.lineTo( l,  w);
-  ctx.lineTo(-l,  w);
-  ctx.lineTo(-l, -w);
-  ctx.stroke();
-  ctx.closePath();
-  ctx.restore();
-}
+const roads = [roadE, roadN, roadW, roadS, roadNW, roadNE, roadSW, roadSE, roadWE, roadNS];
 
-const rhs = false;
-const sor = rhs ? -1 : 1;
+// NS Wrap
+roadS.tracks[0].connectTo(roadN.tracks[0], [[0, 0], [2, 2]]);
+roadN.tracks[1].connectTo(roadS.tracks[1], [[0, 0], [2, 2]]);
+// WE Wrap
+roadE.tracks[0].connectTo(roadW.tracks[0], [[0, 0], [2, 2]]);
+roadW.tracks[1].connectTo(roadE.tracks[1], [[0, 0], [2, 2]]);
+// North -> South
+roadN.tracks[0].connectTo(roadNS.tracks[0], [[0, 0], [2, 2]]);
+roadNS.tracks[0].connectTo(roadS.tracks[0], [[0, 0], [2, 2]]);
+// South -> North
+roadS.tracks[1].connectTo(roadNS.tracks[1], [[0, 0], [2, 2]]);
+roadNS.tracks[1].connectTo(roadN.tracks[1], [[0, 0], [2, 2]]);
+// West -> East
+roadW.tracks[0].connectTo(roadWE.tracks[0], [[0, 0], [2, 2]]);
+roadWE.tracks[0].connectTo(roadE.tracks[0], [[0, 0], [2, 2]]);
+// East -> West
+roadE.tracks[1].connectTo(roadWE.tracks[1], [[0, 0], [2, 2]]);
+roadWE.tracks[1].connectTo(roadW.tracks[1], [[0, 0], [2, 2]]);
+// West -> North
+roadW.tracks[0].connectTo(roadNW.tracks[1], [[2, 0]]);
+roadNW.tracks[1].connectTo(roadN.tracks[1], [[0, 2]]);
+// West -> South
+roadW.tracks[0].connectTo(roadSW.tracks[1], [[0, 0]]);
+roadSW.tracks[1].connectTo(roadS.tracks[0], [[0, 0]]);
+// East -> North
+roadE.tracks[1].connectTo(roadNE.tracks[1], [[0, 0]]);
+roadNE.tracks[1].connectTo(roadN.tracks[1], [[0, 0]]);
+// East -> South
+roadE.tracks[1].connectTo(roadSE.tracks[1], [[2, 0]]);
+roadSE.tracks[1].connectTo(roadS.tracks[0], [[0, 2]]);
+// North -> East
+roadN.tracks[0].connectTo(roadNE.tracks[0], [[2, 0]]);
+roadNE.tracks[0].connectTo(roadE.tracks[0], [[0, 2]]);
+// North -> West
+roadN.tracks[0].connectTo(roadNW.tracks[0], [[0, 0]]);
+roadNW.tracks[0].connectTo(roadW.tracks[1], [[0, 0]]);
+// South -> East
+roadS.tracks[1].connectTo(roadSE.tracks[0], [[0, 0]]);
+roadSE.tracks[0].connectTo(roadE.tracks[0], [[0, 0]]);
+// South -> West
+roadS.tracks[1].connectTo(roadSW.tracks[0], [[2, 0]]);
+roadSW.tracks[0].connectTo(roadW.tracks[1], [[0, 2]]);
 
-const tracks: Track[] = [];
+const ca = new ConflictArea(roads);
 
-const spline1 = new Spline([{ x: 0, y: sor * 6.5, dydx: 0 }, { x: 50, y: sor * 6.5, dydx: 0 }, { x: 100, y: sor * 2.5, dydx: 0 }, { x: 125, y: sor * 2.5, dydx: 0 }]);
-const spline2 = spline1.translate(2);
-const spline3 = new Spline([{ x: 0, y: sor * 2.5, dydx: 0 }, { x: 25, y: sor * 2.5, dydx: 0 }, { x: 75, y: sor * 6.5, dydx: 0 }, { x: 200, y: sor * 6.5, dydx: 0 }]);
-const spline4 = spline3.translate(2);
-
-tracks.push(new Track(curve, 0, 125, [
-  new Lane(Spline.Constant(sor * 2.5, 0, 200)),
-  new Lane(spline1)
-  ]));
-tracks.push(new Track(curve, 125, curve.length, [
-  new Lane(Spline.Constant(sor * 2.5, 0, 200)),
-  new Lane(spline3)
-  ]));
-tracks.push(new Track(curve, 0, curve.length, [
-  new Lane(Spline.Constant(sor * 2.5, 0, 200)),
-  new Lane(Spline.Constant(sor * 6.5, 0, 200))
-  ], true));
-
-tracks[0].connectTo(tracks[1], [[0, 0], [0, 1], [1, 0], [1, 1]]);
-tracks[1].connectTo(tracks[0], [[0, 0], [1, 1]]);
-tracks[2].connectTo(tracks[2], [[0, 0], [1, 1]]);
-
-tracks[0].addMergeSection([0, 1], 65, 130);
-tracks[1].addMergeSection([0, 1], 0, 60);
-
-for (let i=0; i<20; i++) new Car(tracks[1].lanes[0], 7*i, 0);
-for (let i=0; i<20; i++) new Car(tracks[1].lanes[1], 7*i, 0);
-for (let i=0; i<20; i++) new Car(tracks[2].lanes[0], 7*i, 0);
-for (let i=0; i<20; i++) new Car(tracks[2].lanes[1], 7*i, 0);
-
-tracks.forEach(track => track.lanes.forEach(lane => lane.cars.forEach(car => { car.ctx = ctx; })));
+let cursorX = 0, cursorY = 0;
 
 setInterval(() => {
 
   ctx.clearRect(-100, -100, 1000, 1000);
 
-  tracks.forEach(track => {
-    track.resetConditions();
-  });
-  tracks.forEach(track => {
-    track.calculateConditions();
-  });
-  tracks.forEach(track => {
-    track.step(delta);
-  });
+  roads.forEach(r => r.resetConditions());
+  ca.resetConditions();
+  roads.forEach(r => r.calculateConditions());
+  ca.calculateConditions();
+  roads.forEach(r => r.step(delta));
 
   ctx.lineWidth = 0.2;
   ctx.strokeStyle = 'black';
+  roads.forEach(r => drawRoad(ctx, r));
+  //ca.draw(ctx);
 
-  ctx.setLineDash([]);
-  drawLine(s => curve.XY(s, 0.5), 0, curve.length, 1);
-  drawLine(s => curve.XY(s, -0.5), 0, curve.length, 1);
-  ctx.setLineDash([2, 4]);
-  drawLine(s => curve.XY(s, 4.5), 0, 50, 1);
-  drawLine(s => curve.XY(s, 4.5), 200, curve.length, 1);
-  drawLine(s => curve.XY(s, -4.5), 0, curve.length, 1);
-  ctx.setLineDash([]);
-  drawLine(s => curve.XY(s, spline2.Y(s)), 0, 125, 1);
-  drawLine(s => curve.XY(s, spline4.Y(s - 125)), 125, curve.length, 1);
-  drawLine(s => curve.XY(s, -8.5), 0, curve.length, 1);
+  /*ctx.strokeStyle = 'green';
+  for (const car of roadNW.tracks[0].lanes[0].incomingCars(0, 'lane', 100)) {
+    const p = car.XY();
+    ctx.beginPath();
+    ctx.arc(p[0], p[1], 1, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.closePath();
+  }*/
 
-  tracks.forEach(track => {
-    track.lanes.forEach(lane => {
-      lane.cars.forEach(car => {
-        drawCar(car);
-        //const bc = car.lane.getBaseCoords(car.x, car.v);
-        //drawLine(s => curve.XY(bc.x, s), -10, 10, 10);
-      });
-    });
-  });
+}, 1000 * delta * 0.25);
 
-}, 1000 * delta * 0);
+function choose(...items)
+{
+  return items[Math.floor(items.length * Math.random())];
+}
+
+document.onmousemove = function(e){
+  cursorX = (e.pageX - 20) / 4;
+  cursorY = (e.pageY - 20) / 4;
+}
+
+/*window.addEventListener('keydown', (event) => {
+  const dir = (event.keyCode == 65);
+  for (let i=0; i<50; i++) {
+    const cars = road.tracks[0].lanes[dir ? choose(2) : choose(0)].cars;
+    if (cars.length == 0) continue;
+    const car = cars[Math.floor(cars.length * Math.random())];
+    car.changeLanes(dir ? LCDirection.Right : LCDirection.Left);
+    break;
+  }
+});*/
+
+const ind = [[8, 3], [8, 3], [4, 7], [4, 7], [6, 1], [6, 1], [2, 5], [2, 5], [2, 7], [8, 1], [2, 3], [4, 1], [6, 7], [8, 5], [5, 4], [3, 6]];
+
+function conflicts(r1, r2)
+{
+  if (r1[0] == r2[0]) return false;
+  if (r1[1] == r2[1]) return true;
+  let arr = [
+    { a: 0, b: r1[0] },
+    { a: 0, b: r1[1] },
+    { a: 1, b: r2[0] },
+    { a: 1, b: r2[1] }
+  ];
+  arr.sort((a, b) => a.b - b.b);
+  return arr[0].a == arr[2].a;
+}
+
+function getMap()
+{
+  return ind.map(r1 => ind.map(r2 => conflicts(r1, r2) ? 'X' : '-').join(''));
+}
+
+//console.log(JSON.stringify(getMap()));

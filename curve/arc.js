@@ -12,7 +12,7 @@ export default class Arc extends Curve {
         return this.len;
     }
     XY(s, l = 0) {
-        const r = this.radius + (this.direction * l);
+        const r = this.radius + (this.direction * -l);
         const a = this.ang + (this.direction * (s / this.radius));
         return [
             this.centre[0] + (r * Math.cos(a)),

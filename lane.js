@@ -1,11 +1,13 @@
 import PolyLine from './polyline';
+import { LCDirection } from './car';
 export default class Lane {
-    constructor(latSpline) {
+    constructor(latSpline, laneChange = false) {
         this.parent = null;
         this.latSpline = latSpline;
         this.arcSpline = null;
         this._length = 0;
         this.cars = [];
+        this.lc = laneChange;
     }
     get length() {
         return this._length;
@@ -25,13 +27,35 @@ export default class Lane {
         const l = this.latSpline.Y(b);
         return this.parent.getXY(b, l);
     }
-    getXYAfromBaseX(b) {
+    getXYAfromBaseX(b, t = 0, dt = 0) {
         const l = this.latSpline.YdY(b);
-        return this.parent.getXYA(b, l.y, l.dydx);
+        return this.parent.getXYA(b, l.y + t, l.dydx + dt);
+    }
+    getLdL(b) {
+        const { y, dydx } = this.latSpline.YdY(b);
+        return { l: y, dl: dydx };
     }
     getBaseCoords(s, v, ...otherx) {
         const { y, dydx } = this.arcSpline.YdY(s);
         return { x: y, v: dydx * v, ox: otherx.map(s => this.arcSpline.Y(s)) };
+    }
+    getLaneCoords(s, v, ...otherx) {
+        const { x, dxdy } = this.arcSpline.XdX(s);
+        return { x: x, v: dxdy * v, ox: otherx.map(s => this.arcSpline.X(s)) };
+    }
+    getNeighbour(direction) {
+        const nullobj = { mid: null, targ: null };
+        const d = direction == LCDirection.Right ? -1 : 1;
+        if (d == -1 && this.index == 0)
+            return nullobj;
+        if (d == 1 && this.index == this.parent.lanes.length - 1)
+            return nullobj;
+        if (!this.parent.lanes[this.index + d].lc)
+            return nullobj;
+        return {
+            mid: this.parent.lanes[this.index + d],
+            targ: this.parent.lanes[this.index + 2 * d]
+        };
     }
     addCar(car) {
         this.cars.unshift(car);
@@ -61,6 +85,12 @@ export default class Lane {
             else {
                 this.lanesIn.forEach(lane => lane.propagateCondition(followCond, car.x, 500, 1));
             }
+            // Speed limit
+            car.conditions.push({ type: 'speed', v: 60 / 3.6 });
+            // End of lane
+            if (this.lanesOut.length == 0) {
+                car.conditions.push({ type: 'stop', x: this.length, coord: 'lane' });
+            }
         });
     }
     propagateCondition(_cond, _x, lim, depth = 1) {
@@ -74,6 +104,10 @@ export default class Lane {
             cond.x += dx;
         if (cond.hasOwnProperty('mx'))
             cond.mx += dx;
+        if (cond.hasOwnProperty('r'))
+            cond.r.unshift(this);
+        else
+            cond.r = [this];
         for (let i = this.cars.length - 1; i >= 0; i--) {
             const car = this.cars[i];
             car.conditions.push(cond);
@@ -87,5 +121,59 @@ export default class Lane {
     }
     step(dt) {
         this.cars.forEach(car => car.step(dt));
+    }
+    drawLine(s, ctx) {
+        const c = this.latSpline.Y(s);
+        this.parent.curve.drawLine(s, ctx, c - 2, c + 2);
+    }
+    incomingCars(x, coord, lim = 200) {
+        const _this = this;
+        let ind = x >= 0 ? this.cars.length - 1 : -1;
+        while (ind >= 0) {
+            const car = this.cars[ind];
+            if ((coord == 'track' ? car.bc.fx : car.fx) < x)
+                break;
+            ind--;
+        }
+        let prevIt = null, j = 0;
+        return {
+            [Symbol.iterator]() {
+                return {
+                    next() {
+                        if (ind == -1) {
+                            if (x - lim >= 0)
+                                return { value: null, done: true };
+                            if (prevIt == null) {
+                                prevIt = [];
+                                _this.lanesIn.forEach(lane => {
+                                    const len = coord == 'track' ? lane.parent.length : lane.length;
+                                    prevIt.push(lane.incomingCars(x + len, coord, lim)[Symbol.iterator]());
+                                });
+                            }
+                            if (prevIt.length == 0)
+                                return { value: null, done: true };
+                            let t = -1;
+                            for (let jj = j; jj != t; jj = (jj + 1) % prevIt.length) {
+                                t = j;
+                                const obj = prevIt[jj].next();
+                                if (obj.done)
+                                    continue;
+                                j = jj;
+                                return obj;
+                            }
+                            return { value: null, done: true };
+                        }
+                        const car = _this.cars[ind];
+                        if ((coord == 'track' ? car.bc.fx : car.fx) < x - lim)
+                            return { value: null, done: true };
+                        ind--;
+                        return {
+                            value: { car, x },
+                            done: false
+                        };
+                    }
+                };
+            }
+        };
     }
 }

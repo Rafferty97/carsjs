@@ -21,8 +21,8 @@ export default class Line extends Curve {
     }
     XY(s, l = 0) {
         return [
-            this.start[0] + (s * this.normal[0]) + (l * this.normal[1]),
-            this.start[1] + (s * this.normal[1]) - (l * this.normal[0])
+            this.start[0] + (s * this.normal[0]) - (l * this.normal[1]),
+            this.start[1] + (s * this.normal[1]) + (l * this.normal[0])
         ];
     }
     baseAngle(s) {

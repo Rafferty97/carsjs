@@ -44,7 +44,7 @@ export default class PolyCurve extends Curve
         p = [[0, 0]];
         i += 1;
         while (typeof arr[i] == 'number') { p.push(arr.slice(i, i+2) as [number, number]); i += 2; }
-        c = new BezierCurve(orientPoints(p, x, y, a));
+        c = new BezierCurve(...orientPoints(p, x, y, a));
         break;
       }
       if (c == null) break;
